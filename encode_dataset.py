@@ -133,6 +133,22 @@ def encode_folder(input_folder, output_folder):
     writer = csv.writer(f)  
     writer.writerows(csv_data)
 
+def explore_minmax(png_image_name):
+    image_in = Image.open(png_image_name)
+    image_in = np.array(image_in, np.float32)  
+    print(image_in.shape)
+    image_in = image_in/255.0
+    image_in = image_in.transpose((2, 0, 1))
+    image_out = np.expand_dims(image_in, 0)  
+    reduced_latents = torch.tensor(image_out)
+    for minValue in range(-12,-2,1):
+      for maxValue in range(3,13,1):
+        updated_reduced_latents = (reduced_latents*float(maxValue-minValue))+float(minValue)
+        image = decode(updated_reduced_latents)
+        output_file = "explore/minValue" + str(minValue) + "_maxValue"+ str(maxValue) + ".jpg"
+        image.save(output_file)
+
+
 def main():
     print("Load VAE")
     setup()
@@ -142,7 +158,7 @@ def main():
     load_png_decode("output/test_data/A/seed40022.png", "out_seed40022_A_Val.png")
     load_png_decode("output/test_data/B/seed40022.png", "out_seed40022_B_Val.png")
     
-    
+    explore_minmax("output/test_data/B/seed40020.png")
 
 if __name__ == '__main__':
     main()
