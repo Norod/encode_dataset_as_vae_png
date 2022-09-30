@@ -165,13 +165,27 @@ def add_hist_stats(csv_hist_data, image, minValue, maxValue):
     minValue, maxValue
     ])
 
+def save_csv_files(output_folder, csv_data, csv_hist_data):
+  csv_file = output_folder + 'latentMinMaxValues.csv'
+  with open(csv_file, 'w', encoding='UTF8', newline="\n") as f:
+    writer = csv.writer(f)  
+    writer.writerows(csv_data)
+
+  csv_hist_file = output_folder + 'histogramStatsPerLatentMinMaxValues.csv'
+  with open(csv_hist_file, 'w', encoding='UTF8', newline="\n") as f:
+    writer = csv.writer(f)  
+    writer.writerows(csv_hist_data)
+
 def encode_folder(input_folder, output_folder):
   files = list(Path(input_folder).rglob("*.jpg"))
   csv_data = []
   csv_data.append(csv_header)
   csv_hist_data = []
   csv_hist_data.append(csv_header_for_histogram_stats)
+  file_index = 0
+  save_csv_every = 100
   for file in tqdm(files):
+    file_index+=1
     input_file = str(file)
     output_file_name = str(file.stem) + ".png"
     output_file = output_folder + output_file_name
@@ -183,16 +197,10 @@ def encode_folder(input_folder, output_folder):
     encoded_latents_as_image[0].save(output_file, pnginfo=metadata)  #Note: The alpha channel also contains information
     add_hist_stats(csv_hist_data, encoded_latents_as_image[0], minValue, maxValue)
     csv_data.append([output_file_name, minValue, maxValue]) #The generated CSV is not used in this sample, it is for reference only
+    if file_index % save_csv_every == 0:
+      save_csv_files(output_folder, csv_data, csv_hist_data)
   
-  csv_file = output_folder + 'latentMinMaxValues.csv'
-  with open(csv_file, 'w', encoding='UTF8', newline="\n") as f:
-    writer = csv.writer(f)  
-    writer.writerows(csv_data)
-
-  csv_hist_file = output_folder + 'histogramStatsPerLatentMinMaxValues.csv'
-  with open(csv_hist_file, 'w', encoding='UTF8', newline="\n") as f:
-    writer = csv.writer(f)  
-    writer.writerows(csv_hist_data)
+  save_csv_files(output_folder, csv_data, csv_hist_data)
 
 def explore_minmax(png_image_name):
     image_in = Image.open(png_image_name)
