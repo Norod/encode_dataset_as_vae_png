@@ -18,6 +18,13 @@ vae = None
 to_tensor_tfm = None
 
 csv_header = ['imageFile', 'minLatentVal', 'maxLatentVal']
+csv_header_for_histogram_stats = [
+  'r_len_nz', 'r_sum_mul', 'r_avg_nz', 'r_avg_nz_mul', 'r_max_nz', 
+  'g_len_nz', 'g_sum_mul', 'g_avg_nz', 'g_avg_nz_mul', 'g_max_nz', 
+  'b_len_nz', 'b_sum_mul', 'b_avg_nz', 'b_avg_nz_mul', 'b_max_nz', 
+  'a_len_nz', 'a_sum_mul', 'a_avg_nz', 'a_avg_nz_mul', 'a_max_nz',
+  'minLatentVal', 'maxLatentVal'
+  ]
 
 def setup():
     global torch_device
@@ -112,10 +119,58 @@ def load_png_decode(input_file, output_file):
   image = decode(reduced_latents)
   image.save(output_file)
 
+def stats_from_hist_list(hist_list):
+  sum_h = 0
+  sum_h_mul = 0
+  avg_h = 0
+  avg_h_mul = 0
+  avg_h_mul_total = 0
+  len_h = 0
+  min_h = 255
+  max_h = 0
+  item_h_pos = 0
+  
+  for item_h in hist_list:
+    item_h_pos += 1
+    if item_h > 0:
+      len_h+=1
+      item_h_mul = item_h * item_h_pos
+      sum_h+=item_h
+      sum_h_mul+=item_h_mul
+      if item_h > max_h:
+        max_h = item_h
+      if item_h < min_h:
+        min_h = item_h
+  avg_h = sum_h/len_h
+  avg_h_mul = sum_h_mul/len_h
+
+  return str(len_h), str(sum_h_mul), str(avg_h), str(avg_h_mul), str(max_h)
+
+def add_hist_stats(csv_hist_data, image, minValue, maxValue):
+  r, g, b, a = image.split()
+  hist_r = r.histogram()
+  r_len_nz, r_sum_mul, r_avg_nz, r_avg_nz_mul, r_max_nz = stats_from_hist_list(hist_r)
+  hist_g = g.histogram()
+  g_len_nz, g_sum_mul, g_avg_nz, g_avg_nz_mul, g_max_nz = stats_from_hist_list(hist_g)
+  hist_b = b.histogram()
+  b_len_nz, b_sum_mul, b_avg_nz, b_avg_nz_mul, b_max_nz = stats_from_hist_list(hist_b)
+  hist_a = a.histogram()
+  a_len_nz, a_sum_mul, a_avg_nz, a_avg_nz_mul, a_max_nz = stats_from_hist_list(hist_a)
+
+  csv_hist_data.append([
+    r_len_nz, r_sum_mul, r_avg_nz, r_avg_nz_mul, r_max_nz,
+    g_len_nz, g_sum_mul, g_avg_nz, g_avg_nz_mul, g_max_nz,
+    b_len_nz, b_sum_mul, b_avg_nz, b_avg_nz_mul, b_max_nz,
+    a_len_nz, a_sum_mul, a_avg_nz, a_avg_nz_mul, a_max_nz,
+    minValue, maxValue
+    ])
+
 def encode_folder(input_folder, output_folder):
   files = list(Path(input_folder).rglob("*.jpg"))
   csv_data = []
   csv_data.append(csv_header)
+  csv_hist_data = []
+  csv_hist_data.append(csv_header_for_histogram_stats)
   for file in tqdm(files):
     input_file = str(file)
     output_file_name = str(file.stem) + ".png"
@@ -126,12 +181,18 @@ def encode_folder(input_folder, output_folder):
     metadata.add_itxt("minValue", minValue)
     metadata.add_itxt("maxValue", maxValue)
     encoded_latents_as_image[0].save(output_file, pnginfo=metadata)  #Note: The alpha channel also contains information
+    add_hist_stats(csv_hist_data, encoded_latents_as_image[0], minValue, maxValue)
     csv_data.append([output_file_name, minValue, maxValue]) #The generated CSV is not used in this sample, it is for reference only
   
   csv_file = output_folder + 'latentMinMaxValues.csv'
   with open(csv_file, 'w', encoding='UTF8', newline="\n") as f:
     writer = csv.writer(f)  
     writer.writerows(csv_data)
+
+  csv_hist_file = output_folder + 'histogramStatsPerLatentMinMaxValues.csv'
+  with open(csv_hist_file, 'w', encoding='UTF8', newline="\n") as f:
+    writer = csv.writer(f)  
+    writer.writerows(csv_hist_data)
 
 def explore_minmax(png_image_name):
     image_in = Image.open(png_image_name)
