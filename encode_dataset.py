@@ -1,4 +1,4 @@
-#!pip install diffusers==0.2.4
+#!pip install diffusers==0.3.0
 
 import torch
 from diffusers import AutoencoderKL
@@ -47,7 +47,7 @@ def pil_to_latent(input_im):
   # Single image -> single latent in a batch (so size 1, 4, 64, 64)
   with torch.no_grad():
     latent = vae.encode(to_tensor_tfm(input_im).unsqueeze(0).to(torch_device)*2-1) # Note scaling
-  return 0.18215 * latent.sample() # or .mean or .sample
+  return 0.18215 * latent.to_tuple()[0].mean
 
 def latents_to_pil(latents):
   # bath of latents -> list of images
@@ -55,7 +55,7 @@ def latents_to_pil(latents):
   latents = latents.to(torch_device)
   with torch.no_grad():
     image = vae.decode(latents)
-  image = (image.detach().cpu() / 2 + 0.5).clamp(0, 1)
+  image = (image.sample.detach().cpu() / 2 + 0.5).clamp(0, 1)
   image = image.permute(0, 2, 3, 1).numpy()
   images = (image * 255).round().astype("uint8")
   pil_images = [Image.fromarray(image) for image in images]
@@ -227,7 +227,7 @@ def main():
     load_png_decode("output/test_data/A/seed40022.png", "out_seed40022_A_Val.png")
     load_png_decode("output/test_data/B/seed40022.png", "out_seed40022_B_Val.png")
     
-    explore_minmax("output/test_data/B/seed40020.png")
+    #explore_minmax("output/test_data/B/seed40020.png")
 
 if __name__ == '__main__':
     main()
