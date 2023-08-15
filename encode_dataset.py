@@ -35,7 +35,14 @@ def setup():
     torch_device = "cuda" if torch.cuda.is_available() else "cpu"
 
     # Load the autoencoder model which will be used to decode the latents into image space. 
-    vae = AutoencoderKL.from_pretrained("CompVis/stable-diffusion-v1-4", subfolder="vae", use_auth_token=True)
+    #HF_MODEL_ID = "CompVis/stable-diffusion-v1-4"
+    #HF_MODEL_ID = "stabilityai/stable-diffusion-2-base"
+    HF_MODEL_ID = "madebyollin/sdxl-vae-fp16-fix"
+    #vae = AutoencoderKL.from_pretrained(HF_MODEL_ID, subfolder="vae", use_auth_token=True)
+    if torch_device == "cuda":
+      vae = AutoencoderKL.from_pretrained(HF_MODEL_ID, torch_dtype=torch.float16)
+    else:
+      vae = AutoencoderKL.from_pretrained(HF_MODEL_ID)
 
     # To the GPU we go!
     vae = vae.to(torch_device)
@@ -74,7 +81,7 @@ def latents_as_images(latents):
 
 def encode(input_image_file):
 # Load the image with PIL
-    input_image = Image.open(input_image_file).resize((512, 512))
+    input_image = Image.open(input_image_file)#.resize((512, 512))
     encoded = pil_to_latent(input_image)    
     return encoded
 
@@ -224,8 +231,9 @@ def main():
     encode_folder("input/test_data/A/", "output/test_data/A/")
     encode_folder("input/test_data/B/", "output/test_data/B/")
     
-    load_png_decode("output/test_data/A/seed40022.png", "out_seed40022_A_Val.png")
-    load_png_decode("output/test_data/B/seed40022.png", "out_seed40022_B_Val.png")
+    load_png_decode("output/test_data/A/Example00001.png" , "out_Example00001_A_Val.jpg")
+    load_png_decode("output/test_data/A/seed40022.png", "out_seed40022_A_Val.jpg")
+    load_png_decode("output/test_data/B/seed40022.png", "out_seed40022_B_Val.jpg")
     
     #explore_minmax("output/test_data/B/seed40020.png")
 
